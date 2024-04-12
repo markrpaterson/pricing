@@ -38,16 +38,41 @@ impl<P> BidOffer<P> {
     }
 }
 
-pub struct Market<A, P> {
+pub trait Market<A, P> {
+    fn get_price(&self, size: A) -> BidOffer<P>;
+}
+
+pub struct TieredMarket<A, P> {
     pub bids: Vec<Level<A, P>>,
     pub offers: Vec<Level<A, P>>,
+}
+
+impl<A, P> Market<A, P> for TieredMarket<A, P>
+where
+    A: PartialOrd,
+    P: Copy,
+{
+    fn get_price(&self, size: A) -> BidOffer<P> {
+        let bid = self
+            .bids
+            .iter()
+            .find(|&level| level.size > size)
+            .map(|level| level.price);
+        let offer = self
+            .offers
+            .iter()
+            .find(|&level| level.size > size)
+            .map(|level| level.price);
+
+        BidOffer::new(bid, offer)
+    }
 }
 
 type PricingSourceId = u64;
 type SubscriptionId = u64;
 
 type SizeSubscriptionCallback<P> = fn(price: BidOffer<P>);
-type MarketSubscriptionCallback<A, P> = fn(market: Market<A, P>);
+type MarketSubscriptionCallback<A, P> = fn(market: &dyn Market<A, P>);
 
 pub struct Subscription {
     pricing_source: PricingSourceId,
@@ -71,8 +96,7 @@ pub trait PricingSource<I, A, P> {
     fn subscribe_to_size(&self, size: A, callback: SizeSubscriptionCallback<P>) -> Subscription;
     fn unsubscribe(&self, handle: Subscription);
 
-    fn get_price(&self, size: A) -> BidOffer<P>;
-    fn get_market(&self) -> &Market<A, P>;
+    fn get_market(&self) -> &dyn Market<A, P>;
 }
 
 pub struct MarketSubscription<A, P> {
@@ -80,20 +104,24 @@ pub struct MarketSubscription<A, P> {
     callback: MarketSubscriptionCallback<A, P>,
 }
 
-pub struct TieredMarket<I, A, P> {
+pub struct VenuePricingSource<I, M, A, P>
+where
+    M: Market<A, P>,
+{
     id: PricingSourceId,
     instrument: I,
-    market: Market<A, P>,
+    market: M,
     market_subscriptions: RefCell<Vec<MarketSubscription<A, P>>>,
 }
 
-impl<I, A, P> TieredMarket<I, A, P> {}
+impl<I, M, A, P> VenuePricingSource<I, M, A, P> where M: Market<A, P> {}
 
-impl<I, A, P> PricingSource<I, A, P> for TieredMarket<I, A, P>
+impl<I, M, A, P> PricingSource<I, A, P> for VenuePricingSource<I, M, A, P>
 where
     I: Copy,
     A: PartialOrd,
     P: Copy,
+    M: Market<A, P>,
 {
     fn get_id(&self) -> PricingSourceId {
         self.id
@@ -119,7 +147,7 @@ where
         Subscription::new(self.id, subscription_id)
     }
 
-    fn subscribe_to_size(&self, size: A, callback: SizeSubscriptionCallback<P>) -> Subscription {
+    fn subscribe_to_size(&self, _size: A, _callback: SizeSubscriptionCallback<P>) -> Subscription {
         todo!()
     }
 
@@ -131,24 +159,7 @@ where
         }
     }
 
-    fn get_price(&self, size: A) -> BidOffer<P> {
-        let bid = self
-            .market
-            .bids
-            .iter()
-            .find(|&a| a.size > size)
-            .map(|x| x.price);
-        let offer = self
-            .market
-            .offers
-            .iter()
-            .find(|&a| a.size > size)
-            .map(|x| x.price);
-
-        BidOffer::new(bid, offer)
-    }
-
-    fn get_market(&self) -> &Market<A, P> {
+    fn get_market(&self) -> &dyn Market<A, P> {
         &self.market
     }
 }
