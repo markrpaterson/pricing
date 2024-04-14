@@ -19,24 +19,29 @@ classDiagram
         get_prices~T~(IntoIterator~A~ sizes) T~A,BidOffer~
     }
 
-    class TieredMarket~A,P~
+    class TieredMarket~A,P~ {
+        clear()
+    }
     Market <|-- TieredMarket
 
-    class SweepMarket~A,P~
+    class SweepMarket~A,P~ {
+        clear()
+    }
     Market <|-- SweepMarket
+
+    class MarginMarket~A,P~ {
+        Rc~Market~ UnderlyingMarket
+    }
+    Market <|-- MarginMarket
 
     class PricingSource~I,A,P~ {
         <<trait>>
         get_market() &Market~A,P~
     }
 
-    class MarketPricingSource~I,M,A,P~ {
-        clear()
+    class PricingSourceImpl~I,M,A,P~ {
+        
     }
-    PricingSource <|-- MarketPricingSource
+    PricingSource <|-- PricingSourceImpl
 
-    class MarginPricingSource~I,M,A,P~ {
-        &PricingSource~I,A,P~ source
-    }
-    PricingSource <|-- MarginPricingSource
 ```
