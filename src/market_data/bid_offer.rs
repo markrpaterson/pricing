@@ -20,6 +20,22 @@ impl<P> BidOffer<P>
 where
     P: Copy + PartialOrd + Add<Output = P> + Div<Output = P> + From<i32>,
 {
+    /// Use the new function to create a new BidOffer which has no pricing
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::BidOffer;
+    ///
+    /// let bid_offer = BidOffer::<i32>::new();
+    /// ```    
+    pub fn new() -> Self {
+        Self {
+            bid: None,
+            offer: None,
+        }
+    }
+
     /// Use the new function to create a new BidOffer
     ///
     /// # Parameters
@@ -32,9 +48,9 @@ where
     /// ```
     /// use pricing::market_data::BidOffer;
     ///
-    /// let bid_offer = BidOffer::new(Some(10), Some(20));
+    /// let bid_offer = BidOffer::new_with_price(Some(10), Some(20));
     /// ```
-    pub fn new(bid: Option<P>, offer: Option<P>) -> Self {
+    pub fn new_with_price(bid: Option<P>, offer: Option<P>) -> Self {
         Self { bid, offer }
     }
 
@@ -45,7 +61,7 @@ where
     /// ```
     /// use pricing::market_data::BidOffer;
     ///
-    /// let bid_offer = BidOffer::new(Some(10), Some(20));
+    /// let bid_offer = BidOffer::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*bid_offer.get_bid(), Some(10));
     /// ```
@@ -60,7 +76,7 @@ where
     /// ```
     /// use pricing::market_data::BidOffer;
     ///
-    /// let bid_offer = BidOffer::new(Some(10), Some(20));
+    /// let bid_offer = BidOffer::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*bid_offer.get_offer(), Some(20));
     /// ```
@@ -75,7 +91,7 @@ where
     /// ```
     /// use pricing::market_data::BidOffer;
     ///
-    /// let bid_offer = BidOffer::new(Some(10), Some(20));
+    /// let bid_offer = BidOffer::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(bid_offer.get_mid(), Some(15));
     /// ```
@@ -93,13 +109,22 @@ where
     }
 }
 
+impl<P> Default for BidOffer<P>
+where
+    P: Copy + PartialOrd + Add<Output = P> + Div<Output = P> + From<i32>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::BidOffer;
 
     #[test]
     fn basic_double() {
-        let bid_offer = BidOffer::new(Some(1.2), Some(2.4));
+        let bid_offer = BidOffer::new_with_price(Some(1.2), Some(2.4));
 
         assert_eq!(*bid_offer.get_bid(), Some(1.2));
         assert_eq!(*bid_offer.get_offer(), Some(2.4));
@@ -108,7 +133,7 @@ mod tests {
 
     #[test]
     fn basic_integer() {
-        let bid_offer = BidOffer::new(Some(12), Some(23));
+        let bid_offer = BidOffer::new_with_price(Some(12), Some(23));
 
         assert_eq!(*bid_offer.get_bid(), Some(12));
         assert_eq!(*bid_offer.get_offer(), Some(23));
@@ -117,16 +142,13 @@ mod tests {
 
     #[test]
     fn mid_test() {
-        let bid_offer = BidOffer::new(Some(12), None);
-
+        let bid_offer = BidOffer::new_with_price(Some(12), None);
         assert_eq!(bid_offer.get_mid(), Some(12));
 
-        let bid_offer = BidOffer::new(None, Some(23));
-
+        let bid_offer = BidOffer::new_with_price(None, Some(23));
         assert_eq!(bid_offer.get_mid(), Some(23));
 
-        let bid_offer: BidOffer<i32> = BidOffer::new(None, None);
-
+        let bid_offer: BidOffer<i32> = BidOffer::new_with_price(None, None);
         assert_eq!(bid_offer.get_mid(), None);
     }
 }

@@ -1,11 +1,12 @@
 use std::{
     cell::RefCell,
     ops::{Add, Div},
+    rc::Rc,
 };
 
 use super::BidOffer;
 
-pub trait MarketCallback {
+pub trait L1MarketCallback {
     fn market_updated(&self);
 }
 
@@ -17,7 +18,7 @@ pub trait MarketCallback {
 ///
 /// * `A` - The amount type that should be used.
 /// * `P` - The price type that should be used.
-pub struct L1MarketData<'a, A, P>
+pub struct L1MarketData<A, P>
 where
     A: Copy + PartialOrd + Add<Output = A> + Div<Output = A> + From<i32>,
     P: Copy + PartialOrd + Add<Output = P> + Div<Output = P> + From<i32>,
@@ -25,14 +26,31 @@ where
     price: BidOffer<P>,
     max: BidOffer<A>,
 
-    callbacks: RefCell<Vec<&'a dyn MarketCallback>>,
+    callbacks: RefCell<Vec<Rc<dyn L1MarketCallback>>>,
 }
 
-impl<'a, A, P> L1MarketData<'a, A, P>
+impl<A, P> L1MarketData<A, P>
 where
     A: Copy + PartialOrd + Add<Output = A> + Div<Output = A> + From<i32>,
     P: Copy + PartialOrd + Add<Output = P> + Div<Output = P> + From<i32>,
 {
+    /// Use the new function to create a new L1MarketData with no pricing.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::L1MarketData;
+    ///
+    /// let market_data = L1MarketData::<i32, i32>::new();
+    /// ```
+    pub fn new() -> Self {
+        Self {
+            price: BidOffer::new(),
+            max: BidOffer::new(),
+            callbacks: RefCell::new(Vec::new()),
+        }
+    }
+
     /// Use the new function to create a new L1MarketData with a bid and offer price.
     ///
     /// # Parameters
@@ -45,9 +63,9 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let market_data = L1MarketData::<i32, i32>::new(Some(10), Some(20));
+    /// let market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
     /// ```
-    pub fn new(bid: Option<P>, offer: Option<P>) -> Self {
+    pub fn new_with_price(bid: Option<P>, offer: Option<P>) -> Self {
         L1MarketData::new_with_max(bid, offer, None, None)
     }
 
@@ -74,8 +92,8 @@ where
         max_offer: Option<A>,
     ) -> Self {
         Self {
-            price: BidOffer::new(bid, offer),
-            max: BidOffer::new(max_bid, max_offer),
+            price: BidOffer::new_with_price(bid, offer),
+            max: BidOffer::new_with_price(max_bid, max_offer),
             callbacks: RefCell::new(Vec::new()),
         }
     }
@@ -87,7 +105,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let market_data = L1MarketData::<i32, i32>::new(Some(10), Some(20));
+    /// let market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*market_data.get_bid(), Some(10));
     /// ```
@@ -102,7 +120,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let market_data = L1MarketData::<i32, i32>::new(Some(10), Some(20));
+    /// let market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*market_data.get_offer(), Some(20));
     /// ```
@@ -117,7 +135,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let market_data = L1MarketData::<i32, i32>::new(Some(10), Some(20));
+    /// let market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(market_data.get_mid(), Some(15));
     /// ```
@@ -162,7 +180,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let mut market_data = L1MarketData::<i32, i32>::new(Some(10), Some(20));
+    /// let mut market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
     ///
     /// market_data.update_bid(Some(12));
     ///
@@ -170,7 +188,7 @@ where
     /// ```
     pub fn update_bid(&mut self, bid: Option<P>) {
         if *self.price.get_bid() != bid {
-            self.price = BidOffer::new(bid, *self.price.get_offer());
+            self.price = BidOffer::new_with_price(bid, *self.price.get_offer());
             self.publish_to_subscribers();
         }
     }
@@ -182,7 +200,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let mut market_data = L1MarketData::<i32, i32>::new(Some(10), Some(20));
+    /// let mut market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
     ///
     /// market_data.update_offer(Some(22));
     ///
@@ -190,28 +208,28 @@ where
     /// ```
     pub fn update_offer(&mut self, offer: Option<P>) {
         if *self.price.get_offer() != offer {
-            self.price = BidOffer::new(*self.price.get_bid(), offer);
+            self.price = BidOffer::new_with_price(*self.price.get_bid(), offer);
             self.publish_to_subscribers();
         }
     }
 
     pub fn update_max_bid(&mut self, max_bid: Option<A>) {
         if *self.max.get_bid() != max_bid {
-            self.max = BidOffer::new(max_bid, *self.max.get_offer());
+            self.max = BidOffer::new_with_price(max_bid, *self.max.get_offer());
             self.publish_to_subscribers();
         }
     }
 
     pub fn update_max_offer(&mut self, max_offer: Option<A>) {
         if *self.max.get_offer() != max_offer {
-            self.max = BidOffer::new(*self.max.get_bid(), max_offer);
+            self.max = BidOffer::new_with_price(*self.max.get_bid(), max_offer);
             self.publish_to_subscribers();
         }
     }
 
     pub fn update(&mut self, bid: Option<P>, offer: Option<P>) {
         if *self.price.get_bid() != bid || *self.price.get_offer() != offer {
-            self.price = BidOffer::new(bid, offer);
+            self.price = BidOffer::new_with_price(bid, offer);
             self.publish_to_subscribers();
         }
     }
@@ -235,8 +253,8 @@ where
             || *self.max.get_bid() != max_bid
             || *self.max.get_offer() != max_offer
         {
-            self.price = BidOffer::new(bid, offer);
-            self.max = BidOffer::new(max_bid, max_offer);
+            self.price = BidOffer::new_with_price(bid, offer);
+            self.max = BidOffer::new_with_price(max_bid, max_offer);
             self.publish_to_subscribers();
         }
     }
@@ -248,8 +266,27 @@ where
         }
     }
 
+    pub fn update_price_with_max(&mut self, price: BidOffer<P>, max: BidOffer<A>) {
+        if self.price != price || self.max != max {
+            self.price = price;
+            self.max = max;
+            self.publish_to_subscribers();
+        }
+    }
+
+    pub fn clear(&mut self) {
+        if self.price.get_bid().is_some()
+            || self.price.get_offer().is_some()
+            || self.max.get_bid().is_some()
+            || self.max.get_offer().is_some()
+        {
+            self.price = BidOffer::new();
+            self.max = BidOffer::new();
+        }
+    }
+
     pub fn get_price(&self, size: A) -> BidOffer<P> {
-        BidOffer::new(
+        BidOffer::new_with_price(
             if self.max.get_bid().map_or(true, |max_size| max_size >= size) {
                 *self.price.get_bid()
             } else {
@@ -268,22 +305,32 @@ where
     }
 
     fn publish_to_subscribers(&self) {
-        for &callback in self.callbacks.borrow().iter() {
+        for callback in self.callbacks.borrow().iter() {
             callback.market_updated();
         }
     }
 
-    pub fn subscribe(&self, callback: &'a dyn MarketCallback) {
-        self.callbacks.borrow_mut().push(callback);
+    pub fn subscribe(&self, callback: Rc<dyn L1MarketCallback>) {
+        self.callbacks.borrow_mut().push(callback.clone());
+    }
+}
+
+impl<A, P> Default for L1MarketData<A, P>
+where
+    A: Copy + PartialOrd + Add<Output = A> + Div<Output = A> + From<i32>,
+    P: Copy + PartialOrd + Add<Output = P> + Div<Output = P> + From<i32>,
+{
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
+    use std::{cell::RefCell, rc::Rc};
 
-    use super::L1MarketData;
-    use crate::market_data::{l1::MarketCallback, BidOffer};
+    use super::*;
+    use crate::market_data::BidOffer;
 
     struct TestCallback {
         called: RefCell<bool>,
@@ -299,9 +346,13 @@ mod tests {
         fn reset(&self) {
             *self.called.borrow_mut() = false;
         }
+
+        fn is_called(&self) -> bool {
+            *self.called.borrow()
+        }
     }
 
-    impl MarketCallback for TestCallback {
+    impl L1MarketCallback for TestCallback {
         fn market_updated(&self) {
             *self.called.borrow_mut() = true;
         }
@@ -311,61 +362,103 @@ mod tests {
     fn max_applied_when_set() {
         let test = L1MarketData::new_with_max(Some(10), Some(10), Some(10), Some(10));
 
-        assert_eq!(test.get_price(9), BidOffer::new(Some(10), Some(10)));
-        assert_eq!(test.get_price(10), BidOffer::new(Some(10), Some(10)));
-        assert_eq!(test.get_price(11), BidOffer::new(None, None));
+        assert_eq!(
+            test.get_price(9),
+            BidOffer::new_with_price(Some(10), Some(10))
+        );
+        assert_eq!(
+            test.get_price(10),
+            BidOffer::new_with_price(Some(10), Some(10))
+        );
+        assert_eq!(test.get_price(11), BidOffer::new());
     }
 
     #[test]
     fn max_not_applied_when_not_set() {
         let test = L1MarketData::new_with_max(Some(10), Some(10), Some(10), None);
 
-        assert_eq!(test.get_price(9), BidOffer::new(Some(10), Some(10)));
-        assert_eq!(test.get_price(10), BidOffer::new(Some(10), Some(10)));
-        assert_eq!(test.get_price(11), BidOffer::new(None, Some(10)));
+        assert_eq!(
+            test.get_price(9),
+            BidOffer::new_with_price(Some(10), Some(10))
+        );
+        assert_eq!(
+            test.get_price(10),
+            BidOffer::new_with_price(Some(10), Some(10))
+        );
+        assert_eq!(test.get_price(11), BidOffer::new_with_price(None, Some(10)));
 
         let test = L1MarketData::new_with_max(Some(10), Some(10), None, Some(10));
 
-        assert_eq!(test.get_price(9), BidOffer::new(Some(10), Some(10)));
-        assert_eq!(test.get_price(10), BidOffer::new(Some(10), Some(10)));
-        assert_eq!(test.get_price(11), BidOffer::new(Some(10), None));
+        assert_eq!(
+            test.get_price(9),
+            BidOffer::new_with_price(Some(10), Some(10))
+        );
+        assert_eq!(
+            test.get_price(10),
+            BidOffer::new_with_price(Some(10), Some(10))
+        );
+        assert_eq!(test.get_price(11), BidOffer::new_with_price(Some(10), None));
     }
 
     #[test]
-    fn change_triggers_subscriptions() {
+    fn update_individual_triggers_subscriptions() {
         let mut test = L1MarketData::new_with_max(Some(10), Some(10), Some(60), Some(70));
 
-        let callback = TestCallback::new();
-        test.subscribe(&callback);
+        let callback = Rc::new(TestCallback::new());
+        test.subscribe(callback.clone());
 
         test.update_bid(Some(10));
-        assert!(!*callback.called.borrow());
-
+        assert!(!callback.is_called());
         test.update_bid(Some(9));
-        assert!(*callback.called.borrow());
+        assert!(callback.is_called());
 
         callback.reset();
-
         test.update_offer(Some(10));
-        assert!(!*callback.called.borrow());
-
+        assert!(!callback.is_called());
         test.update_offer(Some(19));
-        assert!(*callback.called.borrow());
+        assert!(callback.is_called());
 
         callback.reset();
-
         test.update_max_bid(Some(60));
-        assert!(!*callback.called.borrow());
-
+        assert!(!callback.is_called());
         test.update_max_bid(Some(59));
-        assert!(*callback.called.borrow());
+        assert!(callback.is_called());
 
         callback.reset();
-
         test.update_max_offer(Some(70));
-        assert!(!*callback.called.borrow());
-
+        assert!(!callback.is_called());
         test.update_max_offer(Some(71));
-        assert!(*callback.called.borrow());
+        assert!(callback.is_called());
+    }
+
+    #[test]
+    fn update_multiple_triggers_subscriptions() {
+        let mut test = L1MarketData::new_with_max(Some(10), Some(10), Some(60), Some(70));
+
+        let callback = Rc::new(TestCallback::new());
+        test.subscribe(callback.clone());
+
+        test.update(Some(10), Some(10));
+        assert!(!callback.is_called());
+        test.update(Some(12), Some(10));
+        assert!(callback.is_called());
+        callback.reset();
+        test.update(Some(12), Some(12));
+
+        callback.reset();
+        test.update_price(BidOffer::new_with_price(Some(12), Some(12)));
+        assert!(!callback.is_called());
+        test.update_price(BidOffer::new_with_price(Some(11), Some(12)));
+        assert!(callback.is_called());
+        callback.reset();
+        test.update_price(BidOffer::new_with_price(Some(11), Some(11)));
+
+        callback.reset();
+        test.update_max(BidOffer::new_with_price(Some(60), Some(70)));
+        assert!(!callback.is_called());
+        test.update_max(BidOffer::new_with_price(Some(61), Some(70)));
+        assert!(callback.is_called());
+        callback.reset();
+        test.update_max(BidOffer::new_with_price(Some(61), Some(71)));
     }
 }
