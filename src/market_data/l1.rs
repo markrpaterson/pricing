@@ -42,6 +42,11 @@ where
     /// use pricing::market_data::L1MarketData;
     ///
     /// let market_data = L1MarketData::<i32, i32>::new();
+    ///
+    /// assert_eq!(*market_data.get_bid(), None);
+    /// assert_eq!(*market_data.get_offer(), None);
+    /// assert_eq!(*market_data.get_max_bid(), None);
+    /// assert_eq!(*market_data.get_max_offer(), None);
     /// ```
     pub fn new() -> Self {
         Self {
@@ -64,6 +69,11 @@ where
     /// use pricing::market_data::L1MarketData;
     ///
     /// let market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(10));
+    /// assert_eq!(*market_data.get_offer(), Some(20));
+    /// assert_eq!(*market_data.get_max_bid(), None);
+    /// assert_eq!(*market_data.get_max_offer(), None);
     /// ```
     pub fn new_with_price(bid: Option<P>, offer: Option<P>) -> Self {
         L1MarketData::new_with_max(bid, offer, None, None)
@@ -83,7 +93,12 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let market_data = L1MarketData::new_with_max(Some(10), Some(20), Some(100), Some(100));
+    /// let market_data = L1MarketData::new_with_max(Some(10), Some(20), Some(100), Some(101));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(10));
+    /// assert_eq!(*market_data.get_offer(), Some(20));
+    /// assert_eq!(*market_data.get_max_bid(), Some(100));
+    /// assert_eq!(*market_data.get_max_offer(), Some(101));
     /// ```
     pub fn new_with_max(
         bid: Option<P>,
@@ -175,12 +190,18 @@ where
 
     /// Update the bid price
     ///
+    /// # Parameters
+    ///
+    /// * `bid` - The bid price, a value of None means no price available
+    ///
     /// # Example
     ///
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
     /// let mut market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(10));
     ///
     /// market_data.update_bid(Some(12));
     ///
@@ -195,12 +216,18 @@ where
 
     /// Update the offer price
     ///
+    /// # Parameters
+    ///
+    /// * `offer` - The offer price, a value of None means no price available
+    ///
     /// # Example
     ///
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
     /// let mut market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    ///
+    /// assert_eq!(*market_data.get_offer(), Some(20));
     ///
     /// market_data.update_offer(Some(22));
     ///
@@ -213,6 +240,25 @@ where
         }
     }
 
+    /// Update the maximum size the bid is valid for
+    ///
+    /// # Parameters
+    ///
+    /// * `max_bid` - The max size that the bid price is valid.  A value of None means there is no limit.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::L1MarketData;
+    ///
+    /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    ///
+    /// assert_eq!(*market_data.get_max_bid(), Some(40));
+    ///
+    /// market_data.update_max_bid(Some(42));
+    ///
+    /// assert_eq!(*market_data.get_max_bid(), Some(42));
+    /// ```
     pub fn update_max_bid(&mut self, max_bid: Option<A>) {
         if *self.max.get_bid() != max_bid {
             self.max = BidOffer::new_with_price(max_bid, *self.max.get_offer());
@@ -220,6 +266,25 @@ where
         }
     }
 
+    /// Update the maximum size the offer is valid for
+    ///
+    /// # Parameters
+    ///
+    /// * `max_offer` - The max size that the offer price is valid.  A value of None means there is no limit.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::L1MarketData;
+    ///
+    /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    ///
+    /// assert_eq!(*market_data.get_max_offer(), Some(50));
+    ///
+    /// market_data.update_max_offer(Some(52));
+    ///
+    /// assert_eq!(*market_data.get_max_offer(), Some(52));
+    /// ```
     pub fn update_max_offer(&mut self, max_offer: Option<A>) {
         if *self.max.get_offer() != max_offer {
             self.max = BidOffer::new_with_price(*self.max.get_bid(), max_offer);
@@ -227,6 +292,28 @@ where
         }
     }
 
+    /// Update both the bid and offer prices
+    ///
+    /// # Parameters
+    ///
+    /// * `bid` - The bid price, a value of None means no price available
+    /// * `offer` - The offer price, a value of None means no price available
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::L1MarketData;
+    ///
+    /// let mut market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(10));
+    /// assert_eq!(*market_data.get_offer(), Some(20));
+    ///
+    /// market_data.update(Some(12), Some(22));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(12));
+    /// assert_eq!(*market_data.get_offer(), Some(22));
+    /// ```
     pub fn update(&mut self, bid: Option<P>, offer: Option<P>) {
         if *self.price.get_bid() != bid || *self.price.get_offer() != offer {
             self.price = BidOffer::new_with_price(bid, offer);
@@ -234,6 +321,27 @@ where
         }
     }
 
+    /// Update both the bid and offer prices using a bid/offer structure
+    ///
+    /// # Parameters
+    ///
+    /// * `price` - The bid/offer to update the price with
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::{BidOffer, L1MarketData};
+    ///
+    /// let mut market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(10));
+    /// assert_eq!(*market_data.get_offer(), Some(20));
+    ///
+    /// market_data.update_price(BidOffer::new_with_price(Some(12), Some(22)));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(12));
+    /// assert_eq!(*market_data.get_offer(), Some(22));
+    /// ```
     pub fn update_price(&mut self, price: BidOffer<P>) {
         if self.price != price {
             self.price = price;
@@ -241,6 +349,34 @@ where
         }
     }
 
+    /// Update the price and maximum sizes in a single call
+    ///
+    /// # Parameters
+    ///
+    /// * `bid` - The bid price, a value of None means no price available
+    /// * `offer` - The offer price, a value of None means no price available
+    /// * `max_bid` - The max size that the bid price is valid.  A value of None means there is no limit.
+    /// * `max_offer` - The max size that the offer price is valid.  A value of None means there is no limit.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::L1MarketData;
+    ///
+    /// let mut market_data = L1MarketData::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(10));
+    /// assert_eq!(*market_data.get_offer(), Some(20));
+    /// assert_eq!(*market_data.get_max_bid(), Some(40));
+    /// assert_eq!(*market_data.get_max_offer(), Some(50));
+    ///
+    /// market_data.update_with_max(Some(12), Some(22), Some(42), Some(52));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(12));
+    /// assert_eq!(*market_data.get_offer(), Some(22));
+    /// assert_eq!(*market_data.get_max_bid(), Some(42));
+    /// assert_eq!(*market_data.get_max_offer(), Some(52));
+    /// ```
     pub fn update_with_max(
         &mut self,
         bid: Option<P>,
@@ -259,6 +395,27 @@ where
         }
     }
 
+    /// Update both the bid and offer max size using a bid/offer structure
+    ///
+    /// # Parameters
+    ///
+    /// * `max` - The max size as a bid/offer structure.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::{BidOffer, L1MarketData};
+    ///
+    /// let mut market_data = L1MarketData::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    ///
+    /// assert_eq!(*market_data.get_max_bid(), Some(40));
+    /// assert_eq!(*market_data.get_max_offer(), Some(50));
+    ///
+    /// market_data.update_max(BidOffer::new_with_price(Some(42), Some(52)));
+    ///
+    /// assert_eq!(*market_data.get_max_bid(), Some(42));
+    /// assert_eq!(*market_data.get_max_offer(), Some(52));
+    /// ```
     pub fn update_max(&mut self, max: BidOffer<A>) {
         if self.max != max {
             self.max = max;
@@ -266,6 +423,32 @@ where
         }
     }
 
+    /// Update the both the price and the max sizes using bid/offer structures
+    ///
+    /// # Parameters
+    ///
+    /// * `price` - The bid/offer to update the price with.
+    /// * `max` - The max size as a bid/offer structure.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::{BidOffer, L1MarketData};
+    ///
+    /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(10));
+    /// assert_eq!(*market_data.get_offer(), Some(20));
+    /// assert_eq!(*market_data.get_max_bid(), Some(40));
+    /// assert_eq!(*market_data.get_max_offer(), Some(50));
+    ///
+    /// market_data.update_price_with_max(BidOffer::new_with_price(Some(12),Some(22)),BidOffer::new_with_price(Some(42),Some(52)));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(12));
+    /// assert_eq!(*market_data.get_offer(), Some(22));
+    /// assert_eq!(*market_data.get_max_bid(), Some(42));
+    /// assert_eq!(*market_data.get_max_offer(), Some(52));
+    /// ```
     pub fn update_price_with_max(&mut self, price: BidOffer<P>, max: BidOffer<A>) {
         if self.price != price || self.max != max {
             self.price = price;
@@ -274,6 +457,27 @@ where
         }
     }
 
+    /// Clears the data structure setting bid/off and the max sizes all to None
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::{BidOffer, L1MarketData};
+    ///
+    /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    ///
+    /// assert_eq!(*market_data.get_bid(), Some(10));
+    /// assert_eq!(*market_data.get_offer(), Some(20));
+    /// assert_eq!(*market_data.get_max_bid(), Some(40));
+    /// assert_eq!(*market_data.get_max_offer(), Some(50));
+    ///
+    /// market_data.clear();
+    ///
+    /// assert_eq!(*market_data.get_bid(), None);
+    /// assert_eq!(*market_data.get_offer(), None);
+    /// assert_eq!(*market_data.get_max_bid(), None);
+    /// assert_eq!(*market_data.get_max_offer(), None);
+    /// ```
     pub fn clear(&mut self) {
         if self.price.get_bid().is_some()
             || self.price.get_offer().is_some()
@@ -282,6 +486,7 @@ where
         {
             self.price = BidOffer::new();
             self.max = BidOffer::new();
+            self.publish_to_subscribers();
         }
     }
 
@@ -304,14 +509,14 @@ where
         )
     }
 
+    pub fn subscribe(&self, callback: Rc<dyn L1MarketCallback>) {
+        self.callbacks.borrow_mut().push(callback.clone());
+    }
+
     fn publish_to_subscribers(&self) {
         for callback in self.callbacks.borrow().iter() {
             callback.market_updated();
         }
-    }
-
-    pub fn subscribe(&self, callback: Rc<dyn L1MarketCallback>) {
-        self.callbacks.borrow_mut().push(callback.clone());
     }
 }
 
