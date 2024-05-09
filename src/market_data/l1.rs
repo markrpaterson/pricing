@@ -462,7 +462,7 @@ where
     /// # Example
     ///
     /// ```
-    /// use pricing::market_data::{BidOffer, L1MarketData};
+    /// use pricing::market_data::L1MarketData;
     ///
     /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
     ///
@@ -490,6 +490,28 @@ where
         }
     }
 
+    /// Returns the price for the size passed in.  For an L1 market this is pretty straight forward, as the bid/offer
+    /// returned is the current bid/offer unless the size exceeds the max size.
+    ///
+    /// # Parameters
+    ///
+    /// * `size` - The size the price is required for
+    ///
+    /// # Returns
+    ///
+    /// A Bid/Offer structure with the price
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use pricing::market_data::{BidOffer, L1MarketData};
+    ///
+    /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    ///
+    /// assert_eq!(market_data.get_price(40), BidOffer::new_with_price(Some(10), Some(20)));
+    /// assert_eq!(market_data.get_price(50), BidOffer::new_with_price(None, Some(20)));
+    /// assert_eq!(market_data.get_price(55), BidOffer::new_with_price(None, None));
+    /// ```
     pub fn get_price(&self, size: A) -> BidOffer<P> {
         BidOffer::new_with_price(
             if self.max.get_bid().map_or(true, |max_size| max_size >= size) {
@@ -509,6 +531,56 @@ where
         )
     }
 
+    /// Subscribe to changes to the pricing, and is only called if the pricing actually changes (i.e. updating with the current
+    /// value will not trigger the subscription)  NOTE: this will occur in the same thread as the caller, so make sure that this
+    /// does not cause a recursion issue.
+    ///
+    /// # Parameters
+    ///
+    /// * `callback` - The object which implements the L1MarketCallback trait to callback on
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::cell::RefCell;
+    /// use std::rc::Rc;
+    /// use pricing::market_data::{L1MarketCallback, L1MarketData};
+    ///
+    /// struct TestCallback {
+    ///     called: RefCell<bool>,
+    /// }
+    ///
+    /// impl TestCallback {
+    ///     fn new() -> Self {
+    ///         Self {
+    ///             called: RefCell::new(false),
+    ///         }
+    ///     }
+    ///
+    ///     fn reset(&self) {
+    ///         *self.called.borrow_mut() = false;
+    ///     }
+    ///
+    ///     fn is_called(&self) -> bool {
+    ///         *self.called.borrow()
+    ///     }
+    /// }
+    ///
+    /// impl L1MarketCallback for TestCallback {
+    ///     fn market_updated(&self) {
+    ///         *self.called.borrow_mut() = true;
+    ///     }
+    /// }
+    ///
+    /// let mut test = L1MarketData::<i32, _>::new_with_price(Some(10), Some(10));
+    /// let callback = Rc::new(TestCallback::new());
+    /// test.subscribe(callback.clone());
+    ///
+    /// test.update_bid(Some(10));
+    /// assert!(!callback.is_called());
+    /// test.update_bid(Some(9));
+    /// assert!(callback.is_called());
+    /// ```
     pub fn subscribe(&self, callback: Rc<dyn L1MarketCallback>) {
         self.callbacks.borrow_mut().push(callback.clone());
     }
@@ -649,6 +721,7 @@ mod tests {
         assert!(callback.is_called());
         callback.reset();
         test.update(Some(12), Some(12));
+        assert!(callback.is_called());
 
         callback.reset();
         test.update_price(BidOffer::new_with_price(Some(12), Some(12)));
@@ -657,6 +730,7 @@ mod tests {
         assert!(callback.is_called());
         callback.reset();
         test.update_price(BidOffer::new_with_price(Some(11), Some(11)));
+        assert!(callback.is_called());
 
         callback.reset();
         test.update_max(BidOffer::new_with_price(Some(60), Some(70)));
@@ -665,5 +739,73 @@ mod tests {
         assert!(callback.is_called());
         callback.reset();
         test.update_max(BidOffer::new_with_price(Some(61), Some(71)));
+        assert!(callback.is_called());
+
+        callback.reset();
+        test.update_price_with_max(
+            BidOffer::new_with_price(Some(11), Some(11)),
+            BidOffer::new_with_price(Some(61), Some(71)),
+        );
+        assert!(!callback.is_called());
+        test.update_price_with_max(
+            BidOffer::new_with_price(Some(12), Some(11)),
+            BidOffer::new_with_price(Some(61), Some(71)),
+        );
+        assert!(callback.is_called());
+        callback.reset();
+        test.update_price_with_max(
+            BidOffer::new_with_price(Some(12), Some(12)),
+            BidOffer::new_with_price(Some(61), Some(71)),
+        );
+        assert!(callback.is_called());
+        callback.reset();
+        test.update_price_with_max(
+            BidOffer::new_with_price(Some(12), Some(12)),
+            BidOffer::new_with_price(Some(62), Some(71)),
+        );
+        assert!(callback.is_called());
+        callback.reset();
+        test.update_price_with_max(
+            BidOffer::new_with_price(Some(12), Some(12)),
+            BidOffer::new_with_price(Some(62), Some(72)),
+        );
+        assert!(callback.is_called());
+    }
+
+    #[test]
+    fn clear_triggers_subscriptions() {
+        let mut test = L1MarketData::new();
+
+        let callback = Rc::new(TestCallback::new());
+        test.subscribe(callback.clone());
+
+        test.clear();
+        assert!(!callback.is_called());
+
+        test.update_with_max(Some(10), Some(10), Some(60), Some(70));
+        callback.reset();
+
+        test.clear();
+        assert!(callback.is_called());
+
+        test.update_with_max(Some(10), None, None, None);
+        callback.reset();
+        test.clear();
+        assert!(callback.is_called());
+
+        test.update_with_max(None, Some(10), None, None);
+        callback.reset();
+        test.clear();
+        assert!(callback.is_called());
+
+        test.update_with_max(None, None, Some(10), None);
+        callback.reset();
+        test.clear();
+        assert!(callback.is_called());
+
+        test.update_with_max(None, None, None, Some(10));
+        callback.reset();
+        test.clear();
+        assert!(callback.is_called());
     }
 }
