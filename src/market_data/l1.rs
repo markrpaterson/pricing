@@ -18,10 +18,10 @@ pub trait L1MarketCallback {
 ///
 /// * `A` - The amount type that should be used.
 /// * `P` - The price type that should be used.
-pub struct L1MarketData<A, P>
+pub struct L1MarketData<P, A>
 where
-    A: Copy + PartialOrd + Add<Output = A> + Div<Output = A> + From<i32>,
     P: Copy + PartialOrd + Add<Output = P> + Div<Output = P> + From<i32>,
+    A: Copy + PartialOrd + Add<Output = A> + Div<Output = A> + From<i32>,
 {
     price: BidOffer<P>,
     max: BidOffer<A>,
@@ -29,10 +29,10 @@ where
     callbacks: RefCell<Vec<Rc<dyn L1MarketCallback>>>,
 }
 
-impl<A, P> L1MarketData<A, P>
+impl<P, A> L1MarketData<P, A>
 where
-    A: Copy + PartialOrd + Add<Output = A> + Div<Output = A> + From<i32>,
     P: Copy + PartialOrd + Add<Output = P> + Div<Output = P> + From<i32>,
+    A: Copy + PartialOrd + Add<Output = A> + Div<Output = A> + From<i32>,
 {
     /// Use the new function to create a new L1MarketData with no pricing.
     ///
@@ -68,7 +68,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    /// let market_data = L1MarketData::<_, i32>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*market_data.get_bid(), Some(10));
     /// assert_eq!(*market_data.get_offer(), Some(20));
@@ -120,7 +120,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    /// let market_data = L1MarketData::<_, i32>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*market_data.get_bid(), Some(10));
     /// ```
@@ -135,7 +135,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    /// let market_data = L1MarketData::<_, i32>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*market_data.get_offer(), Some(20));
     /// ```
@@ -150,7 +150,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    /// let market_data = L1MarketData::<_, i32>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(market_data.get_mid(), Some(15));
     /// ```
@@ -199,7 +199,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let mut market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    /// let mut market_data = L1MarketData::<_, i32>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*market_data.get_bid(), Some(10));
     ///
@@ -225,7 +225,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let mut market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    /// let mut market_data = L1MarketData::<_, i32>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*market_data.get_offer(), Some(20));
     ///
@@ -251,7 +251,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    /// let mut market_data = L1MarketData::<_, i32>::new_with_max(Some(10), Some(20), Some(40), Some(50));
     ///
     /// assert_eq!(*market_data.get_max_bid(), Some(40));
     ///
@@ -277,7 +277,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    /// let mut market_data = L1MarketData::<_, i32>::new_with_max(Some(10), Some(20), Some(40), Some(50));
     ///
     /// assert_eq!(*market_data.get_max_offer(), Some(50));
     ///
@@ -304,7 +304,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let mut market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    /// let mut market_data = L1MarketData::<_, i32>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*market_data.get_bid(), Some(10));
     /// assert_eq!(*market_data.get_offer(), Some(20));
@@ -332,7 +332,7 @@ where
     /// ```
     /// use pricing::market_data::{BidOffer, L1MarketData};
     ///
-    /// let mut market_data = L1MarketData::<i32, _>::new_with_price(Some(10), Some(20));
+    /// let mut market_data = L1MarketData::<_, i32>::new_with_price(Some(10), Some(20));
     ///
     /// assert_eq!(*market_data.get_bid(), Some(10));
     /// assert_eq!(*market_data.get_offer(), Some(20));
@@ -435,7 +435,7 @@ where
     /// ```
     /// use pricing::market_data::{BidOffer, L1MarketData};
     ///
-    /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    /// let mut market_data = L1MarketData::<_, i32>::new_with_max(Some(10), Some(20), Some(40), Some(50));
     ///
     /// assert_eq!(*market_data.get_bid(), Some(10));
     /// assert_eq!(*market_data.get_offer(), Some(20));
@@ -464,7 +464,7 @@ where
     /// ```
     /// use pricing::market_data::L1MarketData;
     ///
-    /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    /// let mut market_data = L1MarketData::<_, i32>::new_with_max(Some(10), Some(20), Some(40), Some(50));
     ///
     /// assert_eq!(*market_data.get_bid(), Some(10));
     /// assert_eq!(*market_data.get_offer(), Some(20));
@@ -506,7 +506,7 @@ where
     /// ```
     /// use pricing::market_data::{BidOffer, L1MarketData};
     ///
-    /// let mut market_data = L1MarketData::<i32, _>::new_with_max(Some(10), Some(20), Some(40), Some(50));
+    /// let mut market_data = L1MarketData::<_, i32>::new_with_max(Some(10), Some(20), Some(40), Some(50));
     ///
     /// assert_eq!(market_data.get_price(40), BidOffer::new_with_price(Some(10), Some(20)));
     /// assert_eq!(market_data.get_price(50), BidOffer::new_with_price(None, Some(20)));
@@ -572,7 +572,7 @@ where
     ///     }
     /// }
     ///
-    /// let mut test = L1MarketData::<i32, _>::new_with_price(Some(10), Some(10));
+    /// let mut test = L1MarketData::<_, i32>::new_with_price(Some(10), Some(10));
     /// let callback = Rc::new(TestCallback::new());
     /// test.subscribe(callback.clone());
     ///
@@ -592,10 +592,10 @@ where
     }
 }
 
-impl<A, P> Default for L1MarketData<A, P>
+impl<P, A> Default for L1MarketData<P, A>
 where
-    A: Copy + PartialOrd + Add<Output = A> + Div<Output = A> + From<i32>,
     P: Copy + PartialOrd + Add<Output = P> + Div<Output = P> + From<i32>,
+    A: Copy + PartialOrd + Add<Output = A> + Div<Output = A> + From<i32>,
 {
     fn default() -> Self {
         Self::new()
