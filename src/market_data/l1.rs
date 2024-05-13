@@ -266,7 +266,7 @@ where
     /// assert_eq!(market_data.get_price(), BidOffer::new_with_price(Some(10), Some(20)));
     /// ```
     pub fn get_price(&self) -> BidOffer<P> {
-        self.price.clone()
+        self.price
     }
 
     /// Subscribe to changes to the pricing, and is only called if the pricing actually changes (i.e. updating with the current
