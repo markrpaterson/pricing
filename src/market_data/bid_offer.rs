@@ -123,6 +123,15 @@ mod tests {
     use super::BidOffer;
 
     #[test]
+    fn default() {
+        let bid_offer = BidOffer::<i32>::default();
+
+        assert_eq!(*bid_offer.get_bid(), None);
+        assert_eq!(*bid_offer.get_offer(), None);
+        assert_eq!(bid_offer.get_mid(), None);
+    }
+
+    #[test]
     fn basic_double() {
         let bid_offer = BidOffer::new_with_price(Some(1.2), Some(2.4));
 

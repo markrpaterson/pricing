@@ -1,19 +1,8 @@
-use super::BidOffer;
+use super::{MarketSide, UpdateAction, BidOffer};
 use std::{
     collections::BTreeMap,
     ops::{Add, Div, Mul, Sub},
 };
-
-pub enum UpdateAction {
-    Add,
-    Update,
-    Remove,
-}
-
-pub enum MarketSide {
-    Bid,
-    Offer,
-}
 
 /// A structure to hold L2 pricing which is Sweepable.  This means that it is that the price for any given size
 /// is the VWAP of the levels required to obtain that size.
@@ -101,6 +90,11 @@ where
                 side_store.remove(&price);
             }
         };
+    }
+
+    pub fn clear(&mut self) {
+        self.bids.clear();
+        self.offers.clear();
     }
 
     pub fn get_price(&self, size: A) -> BidOffer<P> {
@@ -221,6 +215,11 @@ where
                 side_store.remove(&size);
             }
         };
+    }
+
+    pub fn clear(&mut self) {
+        self.bids.clear();
+        self.offers.clear();
     }
 
     pub fn get_price(&self, size: A) -> BidOffer<P> {
