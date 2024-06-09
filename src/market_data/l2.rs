@@ -1,4 +1,4 @@
-use super::{MarketSide, UpdateAction, BidOffer};
+use super::{BidOffer, MarketSide, UpdateAction};
 use std::{
     collections::BTreeMap,
     ops::{Add, Div, Mul, Sub},
@@ -251,6 +251,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn default_sweepable() {
+        let test = L2SweepableMarketData::default();
+
+        assert_eq!(test.get_price(1), BidOffer::default());
+    }
+
+    #[test]
+    fn default_full_amount() {
+        let test = L2FullAmountMarketData::<i32, i32>::default();
+
+        assert_eq!(test.get_price(1), BidOffer::default());
+    }
+
+    #[test]
     fn sweepable_get_basic_price() {
         let mut test = L2SweepableMarketData::new();
 
@@ -334,5 +348,85 @@ mod tests {
             test.get_price(40),
             BidOffer::new_with_price(Some(6), Some(24))
         );
+    }
+
+    #[test]
+    fn sweepable_modify_delete_clear() {
+        let mut test = L2SweepableMarketData::new();
+
+        test.update(UpdateAction::Add, MarketSide::Bid, 12, 10);
+        test.update(UpdateAction::Add, MarketSide::Bid, 10, 10);
+        test.update(UpdateAction::Add, MarketSide::Offer, 16, 10);
+        test.update(UpdateAction::Add, MarketSide::Offer, 20, 10);
+
+        assert_eq!(
+            test.get_price(20),
+            BidOffer::new_with_price(Some(11), Some(18))
+        );
+        assert_eq!(test.get_price(40), BidOffer::default());
+
+        test.update(UpdateAction::Update, MarketSide::Bid, 12, 20);
+        test.update(UpdateAction::Update, MarketSide::Offer, 16, 20);
+        test.update(UpdateAction::Update, MarketSide::Bid, 10, 20);
+        test.update(UpdateAction::Update, MarketSide::Offer, 20, 20);
+
+        assert_eq!(
+            test.get_price(20),
+            BidOffer::new_with_price(Some(12), Some(16))
+        );
+        assert_eq!(
+            test.get_price(40),
+            BidOffer::new_with_price(Some(11), Some(18))
+        );
+
+        test.update(UpdateAction::Remove, MarketSide::Bid, 10, 20);
+        test.update(UpdateAction::Remove, MarketSide::Offer, 20, 20);
+
+        assert_eq!(
+            test.get_price(20),
+            BidOffer::new_with_price(Some(12), Some(16))
+        );
+        assert_eq!(test.get_price(40), BidOffer::default());
+
+        test.clear();
+
+        assert_eq!(test.get_price(20), BidOffer::default());
+        assert_eq!(test.get_price(40), BidOffer::default());
+    }
+
+    #[test]
+    fn full_amount_modify_delete_clear() {
+        let mut test = L2FullAmountMarketData::new();
+
+        test.update(UpdateAction::Add, MarketSide::Bid, 12, 10);
+        test.update(UpdateAction::Add, MarketSide::Bid, 10, 20);
+        test.update(UpdateAction::Add, MarketSide::Offer, 16, 10);
+        test.update(UpdateAction::Add, MarketSide::Offer, 20, 20);
+
+        assert_eq!(
+            test.get_price(10),
+            BidOffer::new_with_price(Some(12), Some(16))
+        );
+
+        test.update(UpdateAction::Update, MarketSide::Bid, 13, 10);
+        test.update(UpdateAction::Update, MarketSide::Offer, 15, 10);
+
+        assert_eq!(
+            test.get_price(10),
+            BidOffer::new_with_price(Some(13), Some(15))
+        );
+
+        test.update(UpdateAction::Remove, MarketSide::Bid, 13, 10);
+        test.update(UpdateAction::Remove, MarketSide::Offer, 15, 10);
+
+        assert_eq!(
+            test.get_price(10),
+            BidOffer::new_with_price(Some(10), Some(20))
+        );
+
+        test.clear();
+
+        assert_eq!(test.get_price(20), BidOffer::default());
+        assert_eq!(test.get_price(40), BidOffer::default());
     }
 }
