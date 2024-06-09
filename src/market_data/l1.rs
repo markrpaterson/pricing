@@ -965,6 +965,43 @@ mod tests {
     }
 
     #[test]
+    fn default() {
+        let test = L1MarketData::<i32>::default();
+
+        assert_eq!(*test.get_bid(), None);
+        assert_eq!(*test.get_offer(), None);
+        assert_eq!(test.get_mid(), None);
+        assert_eq!(test.get_price(), BidOffer::new());
+    }
+
+    #[test]
+    fn default_with_max() {
+        let test = L1MarketDataWithMax::<i32, i32>::default();
+
+        assert_eq!(*test.get_bid(), None);
+        assert_eq!(*test.get_offer(), None);
+        assert_eq!(*test.get_max_bid(), None);
+        assert_eq!(*test.get_max_offer(), None);
+        assert_eq!(test.get_mid(), None);
+        assert_eq!(test.get_price(1), BidOffer::new());
+    }
+
+    #[test]
+    fn new_price_with_max() {
+        let test = L1MarketDataWithMax::<_, i32>::new_with_price(Some(10), Some(12));
+
+        assert_eq!(*test.get_bid(), Some(10));
+        assert_eq!(*test.get_offer(), Some(12));
+        assert_eq!(*test.get_max_bid(), None);
+        assert_eq!(*test.get_max_offer(), None);
+        assert_eq!(test.get_mid(), Some(11));
+        assert_eq!(
+            test.get_price(1),
+            BidOffer::new_with_price(Some(10), Some(12))
+        );
+    }
+
+    #[test]
     fn max_applied_when_set() {
         let test = L1MarketDataWithMax::new_with_max(Some(10), Some(10), Some(10), Some(10));
 
